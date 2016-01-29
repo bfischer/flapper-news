@@ -12,7 +12,11 @@ router.get('/', function(req, res, next) {
 });
 
 router.get('/posts/:post', function(req, res) {
-    res.json(req.post);
+    req.post.populate('commets', function(err, post) {
+        if (err) { return next(err); }
+        
+        res.json(req.post);
+    })
 })
 
 router.get('/posts', function(req, res, next) {
