@@ -19,7 +19,12 @@ app.config([
         $stateProvider.state('posts', {
            url: '/posts/{id}',
            templateUrl: '/posts.html',
-           controller: 'PostsCtrl'
+           controller: 'PostsCtrl',
+           resolve: {
+               post: ['$stateParams', 'posts', function($stateParams, posts) {
+                   return posts.get($stateParams.id);
+               }]
+           }
         });
         
         $urlRouterProvider.otherwise('home');        
@@ -38,26 +43,45 @@ app.factory('posts', ['$http', function($http) {
         });
     };
     
+    o.create = function(post) {
+        return $http.post('/posts', post).success(function(data) {
+            o.posts.push(data)
+        });
+    };
+    
+    o.upvote = function(post) {
+        return $http.put('/posts/' + post._id + "/upvote").success(function(data) {
+            post.upvotes += 1
+        })
+    }
+    
+    o.downvote = function(post) {
+        return $http.put('/posts/' + post._id + "/upvote").success(function(data) {
+            post.upvotes -= 1
+        })
+    }
+    
+    o.get = function(id) {
+        return $http.get('/posts/' + id).then(function(res) {
+            return res.data
+        })
+    }
+    
     return o;
 }]);
 
 app.controller('MainCtrl', [
     '$scope',
     'posts',
-    function($scope, posts){
+    function($scope, posts, post){
         $scope.posts = posts.posts;
             
         $scope.addPost = function() {
             if(!$scope.title || $scope.title === '') { return; }
             
-            $scope.posts.push({
-                title: $scope.title, 
-                link: $scope.link , 
-                upvotes: 0,
-                comments: [
-                    {author: 'Joe', body: 'Cool post!', upvotes: 1},
-                    {author: 'Jack', body: 'Test comment!!', upvotes: 6},
-                ]
+            posts.create({
+                title: $scope.title,
+                link: $scope.link,
             });
                 
             $scope.title = '';
@@ -65,11 +89,11 @@ app.controller('MainCtrl', [
         }
         
         $scope.incrementUpvotes = function(post) {
-            post.upvotes += 1;
+            posts.upvote(post);
         }
         
         $scope.decrementUpvotes = function(post) {
-            post.upvotes -= 1;
+            posts.downvote(post);
         }
         
     }
@@ -77,11 +101,11 @@ app.controller('MainCtrl', [
 
 app.controller('PostsCtrl', [
     '$scope',
-    '$stateParams',
     'posts',
-    function($scope, $stateParams, posts){
+    'post', 
+    function($scope, posts, post){
         
-        $scope.post = posts.posts[$stateParams.id];
+        $scope.post = post;
         
         $scope.addComment = function(){
             if($scope.body === '') { return; }
